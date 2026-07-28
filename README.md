@@ -18,11 +18,13 @@ invariants.
 - CMake 3.20 or newer
 - A C++20 compiler such as GCC or Clang
 - A platform threading implementation supported by CMake
+- GoogleTest 1.15.2, resolved from an installed package when available or
+  downloaded by CMake when tests are enabled
 
 ## Build
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
 cmake --build build --parallel
 ```
 
@@ -52,5 +54,17 @@ cmake --build build --parallel
   returned. The demonstration enforces this with shared ownership and joins all
   workers before releasing its final reference.
 
-GoogleTest coverage, Sanitizer configurations, and stress tests will be added in
-later project stages.
+## Test
+
+```bash
+ctest --test-dir build --output-on-failure
+./build/concurrent_buffer_tests
+```
+
+The GoogleTest suite covers construction, FIFO behavior, capacity, metrics,
+blocking producers and consumers, close and drain semantics, and concurrent
+multi-worker transfer integrity. CMake prefers an existing GoogleTest package
+and otherwise fetches the pinned 1.15.2 release.
+
+Sanitizer configurations and continuous integration will be added in later
+project stages.
