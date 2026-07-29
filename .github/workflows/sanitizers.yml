@@ -1,0 +1,102 @@
+name: C++ Sanitizers
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  asan-ubsan:
+    name: ASan + UBSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes g++
+
+      - name: Cache GoogleTest sources
+        uses: actions/cache@v4
+        with:
+          path: build-asan/_deps
+          key: gtest-${{ runner.os }}-GCC-${{ hashFiles('CMakeLists.txt', 'cmake/*.cmake') }}-asan-ubsan
+
+      - name: Configure
+        env:
+          CC: gcc
+          CXX: g++
+        run: >-
+          cmake -S . -B build-asan
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          -DBUILD_BENCHMARKS=OFF
+          -DENABLE_STRICT_WARNINGS=ON
+          -DENABLE_WARNINGS_AS_ERRORS=ON
+          -DENABLE_ASAN_UBSAN=ON
+          -DENABLE_TSAN=OFF
+
+      - name: Build
+        run: cmake --build build-asan --parallel
+
+      - name: Run CTest with ASan and UBSan
+        run: ctest --test-dir build-asan --output-on-failure --timeout 120
+
+      - name: Run demonstration with ASan and UBSan
+        run: ./build-asan/concurrent_buffer_demo
+
+  tsan:
+    name: TSan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      TSAN_OPTIONS: halt_on_error=1:history_size=7
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install GCC
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes g++
+
+      - name: Cache GoogleTest sources
+        uses: actions/cache@v4
+        with:
+          path: build-tsan/_deps
+          key: gtest-${{ runner.os }}-GCC-${{ hashFiles('CMakeLists.txt', 'cmake/*.cmake') }}-tsan
+
+      - name: Configure
+        env:
+          CC: gcc
+          CXX: g++
+        run: >-
+          cmake -S . -B build-tsan
+          -DCMAKE_BUILD_TYPE=Debug
+          -DBUILD_TESTING=ON
+          -DBUILD_BENCHMARKS=OFF
+          -DENABLE_STRICT_WARNINGS=ON
+          -DENABLE_WARNINGS_AS_ERRORS=ON
+          -DENABLE_ASAN_UBSAN=OFF
+          -DENABLE_TSAN=ON
+
+      - name: Build
+        run: cmake --build build-tsan --parallel
+
+      - name: Run concurrent tests with TSan
+        run: ctest --test-dir build-tsan --output-on-failure --timeout 120

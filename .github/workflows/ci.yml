@@ -1,0 +1,72 @@
+name: C++ CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.compiler.name }} / ${{ matrix.build_type }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler:
+          - name: GCC
+            cc: gcc
+            cxx: g++
+            package: g++
+          - name: Clang
+            cc: clang
+            cxx: clang++
+            package: clang
+        build_type:
+          - Debug
+          - Release
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ${{ matrix.compiler.package }}
+
+      - name: Cache GoogleTest sources
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: gtest-${{ runner.os }}-${{ matrix.compiler.name }}-${{ hashFiles('CMakeLists.txt', 'cmake/*.cmake') }}
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+        run: >-
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DBUILD_TESTING=ON
+          -DBUILD_BENCHMARKS=OFF
+          -DENABLE_STRICT_WARNINGS=ON
+          -DENABLE_WARNINGS_AS_ERRORS=ON
+          -DENABLE_ASAN_UBSAN=OFF
+          -DENABLE_TSAN=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run CTest
+        run: ctest --test-dir build --output-on-failure --timeout 120
+
+      - name: Run demonstration
+        run: ./build/concurrent_buffer_demo

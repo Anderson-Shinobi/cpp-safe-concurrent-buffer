@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
     cpp_safe_concurrent_buffer
-    VERSION 0.1.0
+    VERSION 0.2.0
     LANGUAGES CXX
 )
 
@@ -26,6 +26,11 @@ option(
 option(
     ENABLE_TSAN
     "Enable ThreadSanitizer"
+    OFF
+)
+option(
+    BUILD_BENCHMARKS
+    "Build the lightweight benchmark executable"
     OFF
 )
 
@@ -67,6 +72,20 @@ target_link_libraries(concurrent_buffer_demo
 
 enable_project_warnings(concurrent_buffer_demo)
 enable_project_sanitizers(concurrent_buffer_demo)
+
+if(BUILD_BENCHMARKS)
+    add_executable(concurrent_buffer_benchmark
+        benchmarks/buffer_benchmark.cpp
+    )
+
+    target_link_libraries(concurrent_buffer_benchmark
+        PRIVATE
+            concurrent_buffer
+    )
+
+    enable_project_warnings(concurrent_buffer_benchmark)
+    enable_project_sanitizers(concurrent_buffer_benchmark)
+endif()
 
 option(BUILD_TESTING "Build the test suite" ON)
 include(CTest)

@@ -1,5 +1,10 @@
 # C++ Safe Concurrent Buffer
 
+[![C++ CI](https://github.com/Anderson-Shinobi/cpp-safe-concurrent-buffer/actions/workflows/ci.yml/badge.svg)](https://github.com/Anderson-Shinobi/cpp-safe-concurrent-buffer/actions/workflows/ci.yml)
+[![C++ Sanitizers](https://github.com/Anderson-Shinobi/cpp-safe-concurrent-buffer/actions/workflows/sanitizers.yml/badge.svg)](https://github.com/Anderson-Shinobi/cpp-safe-concurrent-buffer/actions/workflows/sanitizers.yml)
+[![MIT License](https://img.shields.io/github/license/Anderson-Shinobi/cpp-safe-concurrent-buffer)](LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/Anderson-Shinobi/cpp-safe-concurrent-buffer)](https://github.com/Anderson-Shinobi/cpp-safe-concurrent-buffer/releases)
+
 A focused Modern C++ portfolio project demonstrating a bounded, thread-safe FIFO
 buffer with deterministic shutdown, explicit ownership, and auditable concurrency
 invariants.
@@ -74,6 +79,7 @@ and otherwise fetches the pinned 1.15.2 release.
 - `ENABLE_ASAN_UBSAN=ON` enables AddressSanitizer and
   UndefinedBehaviorSanitizer.
 - `ENABLE_TSAN=ON` enables ThreadSanitizer.
+- `BUILD_BENCHMARKS=ON` builds the optional lightweight benchmark.
 
 ASan/UBSan and TSan are intentionally mutually exclusive. These options apply
 only to project targets; GoogleTest is built without project warning or
@@ -132,15 +138,56 @@ TSAN_OPTIONS=halt_on_error=1:history_size=7 \
 ctest --test-dir build-tsan --output-on-failure
 ```
 
-## Local Validation Status
+## Continuous Integration
 
-- GCC 13.3.0 strict build completed with warnings-as-errors and all 15 tests.
-- ASan/UBSan completed with leak detection, including 20 repeated CTest runs.
-- Clang was not available in the validation environment.
-- The GCC ThreadSanitizer build completed, but its runtime aborted with
-  `FATAL: ThreadSanitizer: unexpected memory mapping`; the TSan result is
-  therefore inconclusive and is not evidence that the program is race-free.
+The `C++ CI` workflow validates the project on Ubuntu with an explicit matrix of
+GCC and Clang in both Debug and Release modes. Every combination enables strict
+warnings and warnings-as-errors, builds the project, runs all tests through
+CTest, and executes the demonstration as a regression check.
+
+## Sanitizer Validation
+
+The separate `C++ Sanitizers` workflow keeps diagnostic failures isolated and
+visible. One job runs the tests and demonstration with AddressSanitizer,
+UndefinedBehaviorSanitizer, and leak detection. A second job runs the concurrent
+test suite with ThreadSanitizer and does not suppress race reports or use
+`continue-on-error`.
 
 Sanitizer runs improve defect detection but do not constitute formal proof of
-memory safety, undefined-behavior freedom, or data-race freedom. Continuous
-integration remains future work.
+memory safety, undefined-behavior freedom, or data-race freedom. TSan can also
+be affected by runtime or virtual-memory restrictions in a particular
+environment; an infrastructure failure is inconclusive rather than evidence of
+either a race or race freedom.
+
+Local release validation used GCC 13.3.0 and completed all 15 tests, the
+demonstration, the benchmark, and the ASan/UBSan run with leak detection. Clang
+was not installed in the local environment, so its validation is delegated to
+the CI matrix. The local TSan runtime stopped before test discovery with
+`FATAL: ThreadSanitizer: unexpected memory mapping`; this is classified as a
+local runtime limitation, and the separate CI job provides a clean-environment
+attempt.
+
+## Benchmark
+
+The optional benchmark provides transparent, lightweight engineering
+measurements across several producer, consumer, capacity, and payload
+configurations. It validates that every unique message is transferred exactly
+once while reporting total duration and approximate message throughput.
+
+```bash
+cmake -S . -B build-benchmark \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTING=OFF \
+    -DBUILD_BENCHMARKS=ON
+cmake --build build-benchmark --parallel
+./build-benchmark/concurrent_buffer_benchmark
+```
+
+Methodology, environment details, measured results, and limitations are
+documented in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
+
+## Release Status
+
+The source metadata targets v0.2.0. Publication status is reported by the
+dynamic release badge above, which reflects GitHub releases rather than a
+manually asserted status.
