@@ -8,6 +8,30 @@ project(
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(
+    ENABLE_STRICT_WARNINGS
+    "Enable strict compiler warnings"
+    ON
+)
+option(
+    ENABLE_WARNINGS_AS_ERRORS
+    "Treat project warnings as errors"
+    ON
+)
+option(
+    ENABLE_ASAN_UBSAN
+    "Enable AddressSanitizer and UndefinedBehaviorSanitizer"
+    OFF
+)
+option(
+    ENABLE_TSAN
+    "Enable ThreadSanitizer"
+    OFF
+)
+
+include(cmake/CompilerWarnings.cmake)
+include(cmake/Sanitizers.cmake)
+
 find_package(Threads REQUIRED)
 
 add_library(concurrent_buffer
@@ -29,6 +53,9 @@ target_link_libraries(concurrent_buffer
         Threads::Threads
 )
 
+enable_project_warnings(concurrent_buffer)
+enable_project_sanitizers(concurrent_buffer)
+
 add_executable(concurrent_buffer_demo
     src/main.cpp
 )
@@ -37,6 +64,9 @@ target_link_libraries(concurrent_buffer_demo
     PRIVATE
         concurrent_buffer
 )
+
+enable_project_warnings(concurrent_buffer_demo)
+enable_project_sanitizers(concurrent_buffer_demo)
 
 option(BUILD_TESTING "Build the test suite" ON)
 include(CTest)
@@ -65,9 +95,13 @@ if(BUILD_TESTING)
             GTest::gtest_main
     )
 
+    enable_project_warnings(concurrent_buffer_tests)
+    enable_project_sanitizers(concurrent_buffer_tests)
+
     include(GoogleTest)
     gtest_discover_tests(
         concurrent_buffer_tests
         DISCOVERY_TIMEOUT 30
+        DISCOVERY_MODE PRE_TEST
     )
 endif()

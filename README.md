@@ -66,5 +66,81 @@ blocking producers and consumers, close and drain semantics, and concurrent
 multi-worker transfer integrity. CMake prefers an existing GoogleTest package
 and otherwise fetches the pinned 1.15.2 release.
 
-Sanitizer configurations and continuous integration will be added in later
-project stages.
+## Diagnostic Build Options
+
+- `ENABLE_STRICT_WARNINGS=ON` enables supported project warning flags.
+- `ENABLE_WARNINGS_AS_ERRORS=ON` promotes project warnings to errors and can be
+  disabled independently.
+- `ENABLE_ASAN_UBSAN=ON` enables AddressSanitizer and
+  UndefinedBehaviorSanitizer.
+- `ENABLE_TSAN=ON` enables ThreadSanitizer.
+
+ASan/UBSan and TSan are intentionally mutually exclusive. These options apply
+only to project targets; GoogleTest is built without project warning or
+Sanitizer flags.
+
+### Strict GCC
+
+```bash
+cmake -S . -B build-gcc-strict \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_TESTING=ON \
+    -DENABLE_STRICT_WARNINGS=ON \
+    -DENABLE_WARNINGS_AS_ERRORS=ON \
+    -DCMAKE_CXX_COMPILER=g++
+cmake --build build-gcc-strict --parallel
+ctest --test-dir build-gcc-strict --output-on-failure
+```
+
+### Strict Clang
+
+```bash
+cmake -S . -B build-clang-strict \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_TESTING=ON \
+    -DENABLE_STRICT_WARNINGS=ON \
+    -DENABLE_WARNINGS_AS_ERRORS=ON \
+    -DCMAKE_CXX_COMPILER=clang++
+cmake --build build-clang-strict --parallel
+ctest --test-dir build-clang-strict --output-on-failure
+```
+
+### AddressSanitizer and UndefinedBehaviorSanitizer
+
+```bash
+cmake -S . -B build-asan-ubsan \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_TESTING=ON \
+    -DENABLE_ASAN_UBSAN=ON \
+    -DENABLE_TSAN=OFF
+cmake --build build-asan-ubsan --parallel
+ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+ctest --test-dir build-asan-ubsan --output-on-failure
+```
+
+### ThreadSanitizer
+
+```bash
+cmake -S . -B build-tsan \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DBUILD_TESTING=ON \
+    -DENABLE_ASAN_UBSAN=OFF \
+    -DENABLE_TSAN=ON
+cmake --build build-tsan --parallel
+TSAN_OPTIONS=halt_on_error=1:history_size=7 \
+ctest --test-dir build-tsan --output-on-failure
+```
+
+## Local Validation Status
+
+- GCC 13.3.0 strict build completed with warnings-as-errors and all 15 tests.
+- ASan/UBSan completed with leak detection, including 20 repeated CTest runs.
+- Clang was not available in the validation environment.
+- The GCC ThreadSanitizer build completed, but its runtime aborted with
+  `FATAL: ThreadSanitizer: unexpected memory mapping`; the TSan result is
+  therefore inconclusive and is not evidence that the program is race-free.
+
+Sanitizer runs improve defect detection but do not constitute formal proof of
+memory safety, undefined-behavior freedom, or data-race freedom. Continuous
+integration remains future work.
