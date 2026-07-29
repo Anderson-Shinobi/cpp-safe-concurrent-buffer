@@ -17,6 +17,7 @@ invariants.
 - Explicit, idempotent close with post-close draining
 - Atomic diagnostic metrics
 - RAII-based memory and thread lifetime management
+- Installable, versioned CMake package with an exported namespaced target
 
 ## Requirements
 
@@ -32,6 +33,40 @@ invariants.
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
 cmake --build build --parallel
 ```
+
+## Installation
+
+The library supports local and system-specific installation through
+`cmake --install`. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for
+configuration, installation, package discovery, relocation, and uninstallation
+guidance.
+
+## Package Consumption
+
+After installation, external CMake projects can discover the versioned package
+and link its imported target:
+
+```cmake
+find_package(cpp_safe_concurrent_buffer 0.3 REQUIRED)
+
+target_link_libraries(
+    my_target
+    PRIVATE
+        cpp_safe_concurrent_buffer::concurrent_buffer
+)
+```
+
+## API Documentation
+
+The existing public contract, thread-safety guarantees, exceptions, lifetime
+requirements, observers, and limitations are documented in
+[docs/API.md](docs/API.md).
+
+## Installed Consumer Example
+
+[examples/installed_consumer/](examples/installed_consumer/) is an independent
+project that uses only `find_package` and the installed namespaced target. It
+does not include the main project with `add_subdirectory` or source-tree paths.
 
 ## Run
 
@@ -70,6 +105,13 @@ The GoogleTest suite covers construction, FIFO behavior, capacity, metrics,
 blocking producers and consumers, close and drain semantics, and concurrent
 multi-worker transfer integrity. CMake prefers an existing GoogleTest package
 and otherwise fetches the pinned 1.15.2 release.
+
+## Package Validation
+
+When testing is enabled, CTest includes `installed_package_consumer`. The test
+installs the library into an isolated prefix inside the build tree, configures
+the independent consumer against that prefix, builds it, and executes it. This
+validates the installed package rather than the build-tree target.
 
 ## Diagnostic Build Options
 
@@ -188,6 +230,6 @@ documented in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 
 ## Release Status
 
-The source metadata targets v0.2.0. Publication status is reported by the
-dynamic release badge above, which reflects GitHub releases rather than a
-manually asserted status.
+The current development branch prepares the v0.3.0 installable-package release.
+Publication status is reported by the dynamic release badge above, which
+reflects GitHub releases rather than a manually asserted status.

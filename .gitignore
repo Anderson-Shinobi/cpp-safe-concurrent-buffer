@@ -1,5 +1,7 @@
 build/
 build-*/
+local-install-*/
+relocated-install-*/
 cmake-build-*/
 .vscode/
 .idea/

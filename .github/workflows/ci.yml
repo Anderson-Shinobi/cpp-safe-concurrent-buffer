@@ -70,3 +70,18 @@ jobs:
 
       - name: Run demonstration
         run: ./build/concurrent_buffer_demo
+
+      - name: Validate installed package
+        if: matrix.build_type == 'Release'
+        env:
+          CC: ${{ matrix.compiler.cc }}
+          CXX: ${{ matrix.compiler.cxx }}
+        run: |
+          cmake --install build --prefix "$GITHUB_WORKSPACE/package-install"
+          cmake \
+            -S examples/installed_consumer \
+            -B package-consumer-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/package-install"
+          cmake --build package-consumer-build --parallel
+          ./package-consumer-build/installed_consumer

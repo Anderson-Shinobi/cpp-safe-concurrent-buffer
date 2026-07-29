@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+
+include(
+    "${CMAKE_CURRENT_LIST_DIR}/cpp_safe_concurrent_bufferTargets.cmake"
+)
+
+check_required_components(cpp_safe_concurrent_buffer)

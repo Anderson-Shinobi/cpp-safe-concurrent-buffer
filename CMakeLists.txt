@@ -2,11 +2,14 @@ cmake_minimum_required(VERSION 3.20)
 
 project(
     cpp_safe_concurrent_buffer
-    VERSION 0.2.0
+    VERSION 0.3.0
     LANGUAGES CXX
 )
 
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 option(
     ENABLE_STRICT_WARNINGS
@@ -43,6 +46,12 @@ add_library(concurrent_buffer
     src/safe_concurrent_buffer.cpp
 )
 
+add_library(
+    cpp_safe_concurrent_buffer::concurrent_buffer
+    ALIAS
+    concurrent_buffer
+)
+
 target_compile_features(concurrent_buffer
     PUBLIC
         cxx_std_20
@@ -50,7 +59,8 @@ target_compile_features(concurrent_buffer
 
 target_include_directories(concurrent_buffer
     PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_link_libraries(concurrent_buffer
@@ -60,6 +70,53 @@ target_link_libraries(concurrent_buffer
 
 enable_project_warnings(concurrent_buffer)
 enable_project_sanitizers(concurrent_buffer)
+
+install(
+    TARGETS concurrent_buffer
+    EXPORT cpp_safe_concurrent_bufferTargets
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    FILES
+        include/safe_concurrent_buffer.hpp
+    DESTINATION
+        ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    EXPORT cpp_safe_concurrent_bufferTargets
+    FILE cpp_safe_concurrent_bufferTargets.cmake
+    NAMESPACE cpp_safe_concurrent_buffer::
+    DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/cmake/cpp_safe_concurrent_buffer
+)
+
+configure_package_config_file(
+    cmake/cpp_safe_concurrent_bufferConfig.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/cpp_safe_concurrent_bufferConfig.cmake"
+    INSTALL_DESTINATION
+        "${CMAKE_INSTALL_LIBDIR}/cmake/cpp_safe_concurrent_buffer"
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/cpp_safe_concurrent_bufferConfigVersion.cmake"
+    VERSION
+        ${PROJECT_VERSION}
+    COMPATIBILITY
+        SameMajorVersion
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/cpp_safe_concurrent_bufferConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/cpp_safe_concurrent_bufferConfigVersion.cmake"
+    DESTINATION
+        "${CMAKE_INSTALL_LIBDIR}/cmake/cpp_safe_concurrent_buffer"
+)
 
 add_executable(concurrent_buffer_demo
     src/main.cpp
@@ -101,6 +158,7 @@ if(BUILD_TESTING)
             DOWNLOAD_EXTRACT_TIMESTAMP FALSE
         )
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
         FetchContent_MakeAvailable(googletest)
     endif()
 
@@ -122,5 +180,34 @@ if(BUILD_TESTING)
         concurrent_buffer_tests
         DISCOVERY_TIMEOUT 30
         DISCOVERY_MODE PRE_TEST
+    )
+
+    if(CMAKE_CONFIGURATION_TYPES)
+        set(package_test_multi_config ON)
+    else()
+        set(package_test_multi_config OFF)
+    endif()
+
+    add_test(
+        NAME installed_package_consumer
+        COMMAND
+            ${CMAKE_COMMAND}
+            "-DPROJECT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+            "-DPROJECT_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+            "-DPACKAGE_TEST_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/package-test/install"
+            "-DPACKAGE_TEST_CONSUMER_BUILD=${CMAKE_CURRENT_BINARY_DIR}/package-test/consumer-build"
+            "-DPACKAGE_TEST_CONFIGURATION=$<CONFIG>"
+            "-DPACKAGE_TEST_GENERATOR=${CMAKE_GENERATOR}"
+            "-DPACKAGE_TEST_MULTI_CONFIG=${package_test_multi_config}"
+            "-DPACKAGE_TEST_ENABLE_ASAN_UBSAN=${ENABLE_ASAN_UBSAN}"
+            "-DPACKAGE_TEST_ENABLE_TSAN=${ENABLE_TSAN}"
+            "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+            -P
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/package_consumer_test.cmake"
+    )
+    set_tests_properties(
+        installed_package_consumer
+        PROPERTIES
+            TIMEOUT 180
     )
 endif()
