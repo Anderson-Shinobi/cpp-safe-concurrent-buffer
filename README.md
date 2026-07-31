@@ -233,3 +233,8 @@ documented in [docs/BENCHMARKS.md](docs/BENCHMARKS.md).
 The current development branch prepares the v0.3.0 installable-package release.
 Publication status is reported by the dynamic release badge above, which
 reflects GitHub releases rather than a manually asserted status.
+
+
+## License
+
+This project is released under the MIT License. See the [`LICENSE`](LICENSE) file for details.
